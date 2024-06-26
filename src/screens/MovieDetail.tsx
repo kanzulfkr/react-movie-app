@@ -5,22 +5,46 @@ import {
     StyleSheet,
     ImageBackground,
     ScrollView,
+    TouchableOpacity,
 } from 'react-native'
 
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { API_ACCESS_TOKEN } from '@env'
 import { FontAwesome } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
-// import { LinearGradient } from 'react-native-linear-gradient'
 import type { Movie } from '../types/app'
 import MovieList from '../components/movies/MovieList'
+import { useFocusEffect } from '@react-navigation/native'
 
 const MovieDetail = ({ route }: any): JSX.Element => {
     const { id } = route.params
     const [movie, setMovie] = useState<Movie | null>(null)
+    const [isFavorite, setIsFavorite] = useState<boolean>(false)
+
+    const checkFavoriteStatus = async (): Promise<void> => {
+        try {
+            const favoriteMovies = await AsyncStorage.getItem('favoriteMovies')
+            if (favoriteMovies !== null) {
+                const favoriteMoviesArray = JSON.parse(favoriteMovies)
+                const isFavoriteMovie = favoriteMoviesArray.some(
+                    (favMovie: Movie) => favMovie.id === id,
+                )
+                setIsFavorite(isFavoriteMovie)
+            }
+        } catch (error) {
+            console.log(error)
+        }
+    }
 
     useEffect(() => {
         getMovieDetail()
     }, [])
+
+    useFocusEffect(
+        React.useCallback(() => {
+            checkFavoriteStatus()
+        }, [id]),
+    )
 
     const getMovieDetail = (): void => {
         const url = `https://api.themoviedb.org/3/movie/${id}`
@@ -50,6 +74,48 @@ const MovieDetail = ({ route }: any): JSX.Element => {
         )
     }
 
+    const addFavorite = async (): Promise<void> => {
+        try {
+            const favoriteMovies = await AsyncStorage.getItem('favoriteMovies')
+            let favoriteMoviesArray =
+                favoriteMovies !== null ? JSON.parse(favoriteMovies) : []
+            favoriteMoviesArray.push(movie)
+            await AsyncStorage.setItem(
+                'favoriteMovies',
+                JSON.stringify(favoriteMoviesArray),
+            )
+            setIsFavorite(true)
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
+    const removeFavorite = async (): Promise<void> => {
+        try {
+            const favoriteMovies = await AsyncStorage.getItem('favoriteMovies')
+            let favoriteMoviesArray =
+                favoriteMovies !== null ? JSON.parse(favoriteMovies) : []
+            favoriteMoviesArray = favoriteMoviesArray.filter(
+                (favMovie: Movie) => favMovie.id !== id,
+            )
+            await AsyncStorage.setItem(
+                'favoriteMovies',
+                JSON.stringify(favoriteMoviesArray),
+            )
+            setIsFavorite(false)
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
+    const handleFavoritePress = (): void => {
+        if (isFavorite) {
+            removeFavorite()
+        } else {
+            addFavorite()
+        }
+    }
+
     const renderStars = (rating: number) => {
         const stars = []
         for (let i = 1; i <= 5; i++) {
@@ -76,6 +142,16 @@ const MovieDetail = ({ route }: any): JSX.Element => {
                         {renderStars(Math.round(movie.vote_average / 2))}
                         <Text style={styles.ratingText}>{movie.vote_average}</Text>
                     </View>
+                    <TouchableOpacity
+                        onPress={handleFavoritePress}
+                        style={styles.favoriteIcon}
+                    >
+                        <FontAwesome
+                            name={isFavorite ? 'heart' : 'heart-o'}
+                            size={32}
+                            color="red"
+                        />
+                    </TouchableOpacity>
                 </LinearGradient>
             </ImageBackground>
             <View style={styles.container}>
@@ -138,6 +214,11 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: 'yellow',
         marginLeft: 8,
+    },
+    favoriteIcon: {
+        position: 'absolute',
+        top: 16,
+        right: 16,
     },
     container: {
         padding: 16,
