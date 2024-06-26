@@ -1,27 +1,27 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import {
     View,
-    Text,
+    TextInput,
     FlatList,
+    Text,
     StyleSheet,
-    ImageBackground,
     TouchableOpacity,
+    ImageBackground,
 } from 'react-native'
-import { useRoute, useNavigation } from '@react-navigation/native'
+import { useNavigation } from '@react-navigation/native'
 import { API_ACCESS_TOKEN } from '@env'
 
-const CategorySearchResult = (): JSX.Element => {
-    const route = useRoute()
-    const navigation = useNavigation()
-    const { genreId } = route.params as { genreId: number }
+const KeywordSearch = (): JSX.Element => {
+    const [keyword, setKeyword] = useState<string>('')
     const [movies, setMovies] = useState<any[]>([])
+    const navigation = useNavigation()
 
-    useEffect(() => {
-        fetchMoviesByGenre()
-    }, [])
+    const searchMovies = async (): Promise<void> => {
+        if (keyword.trim() === '') {
+            return
+        }
 
-    const fetchMoviesByGenre = async (): Promise<void> => {
-        const url = `https://api.themoviedb.org/3/discover/movie?with_genres=${genreId}`
+        const url = `https://api.themoviedb.org/3/search/movie?query=${keyword}`
         const options = {
             method: 'GET',
             headers: {
@@ -56,7 +56,14 @@ const CategorySearchResult = (): JSX.Element => {
     )
 
     return (
-        <View style={styles.container}>
+        <View>
+            <TextInput
+                style={styles.input}
+                value={keyword}
+                onChangeText={setKeyword}
+                placeholder="Search movies..."
+                onSubmitEditing={searchMovies}
+            />
             <FlatList
                 data={movies}
                 renderItem={renderMovieItem}
@@ -69,9 +76,13 @@ const CategorySearchResult = (): JSX.Element => {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 8,
+    input: {
+        height: 40,
+        borderColor: 'gray',
+        borderWidth: 1,
+        marginBottom: 8,
+        paddingHorizontal: 8,
+        borderRadius: 20,
     },
     resultsContainer: {
         padding: 8,
@@ -98,4 +109,4 @@ const styles = StyleSheet.create({
     },
 })
 
-export default CategorySearchResult
+export default KeywordSearch
